@@ -77,6 +77,12 @@ python tests/parity.py work/ ~/.stimmwandler/hubert_base ~/.stimmwandler/rmvpe.p
 python tests/e2e_compare.py work/ <hubert> <rmvpe>                                   # Python vs Rust CLI
 ```
 
+## Related projects
+
+- [RVC-Project](https://github.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI) - upstream (MIT), model code vendored from here
+- [kNN-VC](https://github.com/bshall/knn-vc) - planned second engine (not implemented yet)
+- [Red-fuchs/kitsune](https://github.com/Red-fuchs/kitsune) - local voice assistant; Stimmwandler can serve as its voice-changer stage
+
 ## Licenses
 
 MIT. Model code vendored from RVC-Project (MIT), see `THIRD_PARTY_NOTICES.md`. Base models are downloaded by you from their official source and have their own licenses.
