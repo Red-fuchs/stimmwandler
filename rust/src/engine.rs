@@ -12,8 +12,8 @@ const HOP: usize = 160;
 #[derive(Deserialize)]
 struct Meta { sr: u32, dim: usize, onnx: String, hubert: String, rmvpe: String, index: Option<String> }
 
-pub struct Params { pub pitch: f32, pub index_rate: f32, pub protect: f32, pub sid: i64 }
-impl Default for Params { fn default() -> Self { Self { pitch: 0.0, index_rate: 0.5, protect: 0.33, sid: 0 } } }
+pub struct Params { pub pitch: f32, pub index_rate: f32, pub protect: f32, pub sid: i64, pub rms_mix: f32 }
+impl Default for Params { fn default() -> Self { Self { pitch: 0.0, index_rate: 0.5, protect: 0.33, sid: 0, rms_mix: 0.25 } } }
 
 pub struct Engine {
     pub sr: u32,
@@ -23,8 +23,11 @@ pub struct Engine {
     idx: Option<(Vec<f32>, usize, usize)>,
 }
 
+static ENV: std::sync::OnceLock<ort::environment::Environment> = std::sync::OnceLock::new();
+
 fn sess(p: &Path) -> Result<Session> {
-    Ok(Session::builder().map_err(|e| anyhow::anyhow!("{e}"))?.commit_from_file(p).map_err(|e| anyhow::anyhow!("{} {e}", p.display()))?)
+    if ENV.get().is_none() { let _ = ENV.set(ort::init().build().map_err(|e| anyhow::anyhow!("{e}"))?); }
+    Ok(Session::builder(ENV.get().unwrap()).map_err(|e| anyhow::anyhow!("{e}"))?.commit_from_file(p).map_err(|e| anyhow::anyhow!("{} {e}", p.display()))?)
 }
 macro_rules! ort { ($e:expr) => { $e.map_err(|e| anyhow::anyhow!("{e}"))? }; }
 
@@ -85,7 +88,7 @@ impl Engine {
                     best.truncate(8);
                 }
             }
-            let w: Vec<f32> = best.iter().map(|b| 1.0 / (b.0 + 1e-12)).collect();
+            let w: Vec<f32> = best.iter().map(|b| 1.0 / (b.0 * b.0 + 1e-24)).collect();
             let ws: f32 = w.iter().sum();
             for j in 0..*d {
                 let g: f32 = best.iter().zip(&w).map(|(b, w)| v[b.1 * d + j] * w).sum::<f32>() / ws;
@@ -158,8 +161,25 @@ impl Engine {
             let o = self.vc(&pad[s..e], &pc[s / HOP..e / HOP], &f0[s / HOP..e / HOP], p)?;
             out.extend_from_slice(&o[t..o.len() - t]);
         }
+        if p.rms_mix != 1.0 { rms_mix(&a, SR, &mut out, self.sr, p.rms_mix); }
         let m = out.iter().fold(0f32, |a, b| a.max(b.abs())) / 0.99;
         if m > 1.0 { out.iter_mut().for_each(|v| *v /= m); }
         Ok(out)
     }
+}
+
+fn rms_curve(x: &[f32], sr: u32, len: usize) -> Vec<f32> {
+    let h = (sr / 2) as usize;
+    let n = x.len() / h + 1;
+    let r: Vec<f32> = (0..n).map(|i| if i * h < x.len() { let s = &x[i * h..((i + 2) * h).min(x.len())]; (s.iter().map(|v| v * v).sum::<f32>() / s.len() as f32 + 1e-12).sqrt() } else { 1e-6 }).collect();
+    (0..len).map(|k| {
+        let t = if len > 1 { k as f32 * (n - 1) as f32 / (len - 1) as f32 } else { 0.0 };
+        let (i, f) = (t.floor() as usize, t.fract());
+        if i + 1 < n { r[i] * (1.0 - f) + r[i + 1] * f } else { r[n - 1] }
+    }).collect()
+}
+
+fn rms_mix(src: &[f32], sr1: u32, out: &mut [f32], sr2: u32, rate: f32) {
+    let (a, b) = (rms_curve(src, sr1, out.len()), rms_curve(out, sr2, out.len()));
+    for i in 0..out.len() { out[i] *= a[i].powf(1.0 - rate) * b[i].max(1e-6).powf(rate - 1.0); }
 }

@@ -106,7 +106,7 @@ def load_index(path):
 def knn_blend(feats: torch.Tensor, vecs: torch.Tensor, rate: float, k=8):
     d = torch.cdist(feats[0], vecs)  # (T,N)
     sc, ix = d.topk(k, largest=False)
-    w = 1 / (sc.square() + 1e-12)
+    w = 1 / (sc.square().square() + 1e-24)  # upstream: (1/squared_L2)^2
     w = w / w.sum(1, keepdim=True)
     got = (vecs[ix] * w.unsqueeze(-1)).sum(1)
     return (got * rate + (1 - rate) * feats[0])[None]

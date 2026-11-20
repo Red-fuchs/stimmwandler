@@ -19,3 +19,7 @@ f = 140 + 20 * np.sin(2 * np.pi * 4 * t)
 ph = 2 * np.pi * np.cumsum(f) / 16000
 x = sum(np.sin(h * ph) / h for h in range(1, 12)) * 0.2 * (np.sin(np.pi * t / 3) ** 0.5)
 sf.write(out / "synthetic.wav", x.astype(np.float32), 16000)
+import faiss
+ix = faiss.IndexFlatL2(768)
+ix.add(torch.randn(500, 768).numpy() * 0.3)
+faiss.write_index(ix, str(out / "dummy.index"))
