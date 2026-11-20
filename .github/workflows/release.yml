@@ -1,0 +1,29 @@
+name: release
+on:
+  push: { tags: ["v*"] }
+  workflow_dispatch:
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - { os: windows-latest, name: windows-x64, ext: .exe }
+          - { os: ubuntu-22.04, name: linux-x64, ext: "" }
+          - { os: macos-14, name: macos-arm64, ext: "" }
+          - { os: macos-13, name: macos-x64, ext: "" }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: startsWith(matrix.os, 'ubuntu')
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libxkbcommon-dev libwayland-dev libgtk-3-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: rust }
+      - run: cargo build --release --manifest-path rust/Cargo.toml
+      - shell: bash
+        run: |
+          mkdir out && cp rust/target/release/stimmwandler-rs${{ matrix.ext }} rust/target/release/stimmwandler-gui${{ matrix.ext }} LICENSE THIRD_PARTY_NOTICES.md out/
+          # ONNX Runtime shared lib is downloaded by `ort` and copied next to the binaries on Windows/Linux
+          cp rust/target/release/*.dll rust/target/release/*.so* out/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        with: { name: "stimmwandler-${{ matrix.name }}", path: out }
