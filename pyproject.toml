@@ -1,0 +1,14 @@
+[project]
+name = "stimmwandler"
+version = "0.1.0"
+description = "Cross-platform RVC / kNN-VC voice changer (PyTorch + ONNX export)"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = ["torch>=2.2", "numpy", "scipy", "soundfile", "librosa", "transformers>=4.40", "faiss-cpu", "onnx", "onnxruntime", "onnxscript", "sounddevice"]
+[project.scripts]
+stimmwandler = "stimmwandler.cli:main"
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,10 @@
+target/
+__pycache__/
+*.egg-info/
+*.pth
+*.onnx
+*.index
+*.npy
+*.wav
+!tests/*.wav
+models/
