@@ -25,3 +25,14 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+---
+
+src/stimmwandler/knn/ is vendored from bshall/knn-vc (MIT, Copyright (c) 2023 MediaLab, Department of Electrical & Electronic Engineering, Stellenbosch University). Contains:
+- wavlm.py, modules.py: WavLM from microsoft/unilm (MIT, Copyright (c) 2021 Microsoft), based on fairseq (MIT).
+- hifigan.py: HiFi-GAN generator, based on jik876/hifi-gan (MIT, Copyright (c) 2020 Jungil Kong).
+
+Model weights are NOT redistributed; they are downloaded at first use from the bshall/knn-vc GitHub release v0.1 (WavLM-Large.pt = Microsoft WavLM Large checkpoint, prematch_g_02500000.pt = HiFi-GAN trained by the kNN-VC authors). The kNN-VC repository is MIT; the WavLM repository is MIT; neither states a separate weights license, but WavLM-Large was pre-trained on Libri-Light, GigaSpeech and VoxPopuli, whose terms apply to you. The HiFi-GAN was trained on LibriSpeech (CC BY 4.0). Check these yourself before commercial use.
+
+The MIT permission notice of the upstream repositories is the same text as above with the respective copyright holders.

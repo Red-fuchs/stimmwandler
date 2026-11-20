@@ -79,6 +79,18 @@ def cmd_stream(a):
             oq.put(xf.push(audio.resample(y[-int(len(x) * c.sr / SR + 0.05 * c.sr):], c.sr, sr)))
 
 
+def cmd_knn(a):
+    from . import audio
+    from .knn.engine import SR, KnnVC, fetch
+    h = HOME / "knnvc"
+    fetch(h)
+    m = KnnVC(h, a.device)
+    pool = __import__("torch").cat([m.matching_set(audio.read_mono(r, SR)) for r in a.ref])
+    x = audio.read_mono(a.input, SR)
+    audio.write(a.output, m.convert(x, pool, a.k), SR)
+    print(f"{len(x)/SR:.1f}s -> {a.output} (matching set {len(pool)} frames)")
+
+
 def cmd_export(a):
     from .export import export_all
     hub, rm = paths(a)
@@ -115,6 +127,11 @@ def main():
     q.add_argument("--block", type=float, default=0.4), q.add_argument("--context", type=float, default=1.0)
     q.add_argument("--list-devices", action="store_true")
     q.set_defaults(f=cmd_stream)
+    q = s.add_parser("knn", help="kNN-VC: convert input to the voice of the reference wav(s); no training, ~10s+ of reference")
+    q.add_argument("input"), q.add_argument("-o", "--output", required=True)
+    q.add_argument("-r", "--ref", nargs="+", required=True, help="reference wav(s) of the target voice")
+    q.add_argument("-k", type=int, default=4), q.add_argument("--device", default="cpu")
+    q.set_defaults(f=cmd_knn)
     q = s.add_parser("export-onnx", help="export model + hubert + rmvpe to ONNX for the Rust app"); common(q)
     q.add_argument("--out", required=True)
     q.add_argument("--deterministic", action="store_true", help="zero noise (parity tests only)")

@@ -6,10 +6,9 @@
 - Rust `rust/`: ort rc.15 (Cargo says rc.12 caret, resolves rc.15, needs Environment), cpal 0.18, eframe 0.37. bins: stimmwandler-rs (convert/stream), stimmwandler-gui. Builds on macOS.
 - CI `.github/workflows/release.yml` (untriggered), README, LICENSE, THIRD_PARTY_NOTICES.
 
+## Update 2026-11-20
+- Done: ort pinned =2.0.0-rc.15; Xfade (50 ms) in Rust dsp.rs + Python audio.py with tests; kNN-VC Python engine (src/stimmwandler/knn, `stimmwandler knn`), tested with macOS `say` audio; README/NOTICES updated. kNN-VC ONNX/Rust not done (documented Python-only).
 ## Not done / next
-1. kNN-VC (bshall/knn-vc, MIT, clone to $TMPDIR/upstream/knn-vc already present): Python port (WavLM-Large layer 6 + prematched HiFi-GAN, weights from the repo's GitHub releases), `stimmwandler knn` CLI, optionally ONNX.
-2. Realtime stream quality untested with real audio devices (no GUI/mic run); no crossfade between blocks yet (clicks likely at block edges).
-3. Windows/Linux builds untested; ort download-binaries lib copying in CI is a guess (dll/so must sit next to exe; verify).
-4. No real voice model tested (only random weights); nono (no-f0) models only in Python, not ONNX.
-5. Rust highpass is forward-backward SOS without edge padding (differs marginally from scipy filtfilt). Rust lacks fcpe/pm f0.
-6. Test data: base models cached in $TMPDIR/models (may be cleared); dummy in $TMPDIR/t.
+1. Real-device streaming, Windows/Linux builds + CI lib copying untested.
+2. No real voice model tested; nono models Python only; Rust lacks fcpe/pm; highpass differs marginally.
+3. kNN-VC: optional ONNX export, streaming variant.
