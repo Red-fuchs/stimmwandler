@@ -69,13 +69,14 @@ def cmd_stream(a):
 
     print("streaming; Ctrl+C to stop", file=sys.stderr)
     hist = np.zeros(ctx, np.float32)
+    xf = audio.Xfade(int(0.05 * sr))
     with sd.Stream(samplerate=sr, blocksize=int(a.block * sr), device=dev, channels=(1, 2), dtype="float32", callback=duplex):
         while True:
             x = audio.resample(iq.get(), sr, SR)
             seg = np.concatenate([hist, x])
             hist = seg[-ctx:]
             y = c.convert(seg, a.pitch, a.index, a.index_rate, a.protect, 1.0, a.sid)
-            oq.put(audio.resample(y[-int(len(x) * c.sr / SR):], c.sr, sr))
+            oq.put(xf.push(audio.resample(y[-int(len(x) * c.sr / SR + 0.05 * c.sr):], c.sr, sr)))
 
 
 def cmd_export(a):

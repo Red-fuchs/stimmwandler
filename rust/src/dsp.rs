@@ -98,3 +98,44 @@ pub fn read_npy_f32(p: &Path) -> Result<(Vec<f32>, usize, usize)> {
     let v = b[off + hl..].chunks_exact(4).map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]])).collect();
     Ok((v, d[0], d[1]))
 }
+
+/// Equal-gain linear crossfade between consecutive blocks; adds `ov` samples latency.
+pub struct Xfade { ov: usize, tail: Option<Vec<f32>> }
+
+impl Xfade {
+    pub fn new(ov: usize) -> Self { Self { ov, tail: None } }
+    /// `s` = last `keep+ov` samples of the block output (head overlaps the previous block). Returns `keep` samples.
+    pub fn push(&mut self, s: &[f32]) -> Vec<f32> {
+        let ov = self.ov.min(s.len());
+        let keep = s.len() - ov;
+        let mut out = Vec::with_capacity(keep);
+        if let Some(t) = self.tail.as_ref().filter(|t| t.len() == ov) {
+            out.extend((0..ov).map(|i| { let w = (i as f32 + 1.0) / (ov as f32 + 1.0); t[i] * (1.0 - w) + s[i] * w }));
+        } else { out.extend_from_slice(&s[..ov]); }
+        out.extend_from_slice(&s[ov..keep]);
+        self.tail = Some(s[keep..].to_vec());
+        out
+    }
+}
+
+#[cfg(test)]
+mod xf_tests {
+    use super::*;
+    fn run(jitter: bool, xf: bool) -> f32 {
+        let (sr, f, blk, ov) = (16000f32, 440f32, 3200usize, 800usize);
+        let w = 2.0 * std::f32::consts::PI * f / sr;
+        let mut x = Xfade::new(ov);
+        let mut out = vec![];
+        for b in 1..9 {
+            let end = (b + 1) * blk;
+            let ph = if jitter { 0.6 * (b % 2) as f32 } else { 0.0 };
+            let s: Vec<f32> = (end - blk - ov..end).map(|n| (w * n as f32 + ph).sin()).collect();
+            out.extend(if xf { x.push(&s) } else { s[ov..].to_vec() });
+        }
+        out.windows(2).map(|p| (p[1] - p[0]).abs()).fold(0.0, f32::max)
+    }
+    #[test]
+    fn continuous() { assert!(run(false, true) <= 2.0 * std::f32::consts::PI * 440.0 / 16000.0 * 1.01 + 1e-4); }
+    #[test]
+    fn smooths_mismatch() { assert!(run(true, true) < 0.5 * run(true, false)); }
+}

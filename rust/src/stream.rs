@@ -1,4 +1,4 @@
-use crate::dsp::resample;
+use crate::dsp::{resample, Xfade};
 use crate::engine::{Engine, Params, SR};
 use anyhow::{anyhow, Result};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
@@ -47,6 +47,8 @@ pub fn run_until(dir: &Path, model: &str, p: Params, ind: Option<String>, outd: 
         for f in d.chunks_mut(och) { let v = q.pop_front().unwrap_or(0.0); f.iter_mut().for_each(|s| *s = v); }
     }, |e| eprintln!("output error: {e}"), None)?;
     ins.play()?; outs.play()?;
+    let ov = (0.05 * osr as f32) as usize;
+    let mut xf = Xfade::new(ov);
     let mut hist = vec![0f32; (context * SR as f32) as usize];
     while !stop.load(Ordering::Relaxed) {
         let Ok(x) = rx.recv_timeout(std::time::Duration::from_millis(100)) else { continue };
@@ -55,8 +57,9 @@ pub fn run_until(dir: &Path, model: &str, p: Params, ind: Option<String>, outd: 
         seg.extend_from_slice(&x);
         hist = seg[seg.len() - hist.len()..].to_vec();
         let y = eng.convert(&seg, &p)?;
-        let keep = (x.len() as f64 * eng.sr as f64 / SR as f64) as usize;
+        let keep = (x.len() as f64 * eng.sr as f64 / SR as f64) as usize + (0.05 * eng.sr as f32) as usize;
         let y = resample(&y[y.len() - keep.min(y.len())..], eng.sr, osr);
+        let y = xf.push(&y);
         let mut q = q.lock().unwrap();
         if q.len() > osr as usize { q.clear(); } // drop backlog instead of growing latency
         q.extend(y);
